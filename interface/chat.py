@@ -1,5 +1,5 @@
 import streamlit as st
-from ui.conversation import run_conversation
+from interface.conversation import run_conversation
 
 def render_chat_interface():
     """Render the main chat interface."""

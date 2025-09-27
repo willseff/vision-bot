@@ -1,5 +1,5 @@
 import streamlit as st
-from ui.chat import render_chat_interface, render_sidebar
+from interface.chat import render_chat_interface, render_sidebar
 
 # =============================
 # 🌤️ Weather Assistant App
