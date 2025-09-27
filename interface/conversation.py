@@ -21,12 +21,23 @@ def validate_assistant_setup() -> str | None:
     return None
 
 
-def create_user_message(client, user_message: str) -> None:
+def create_user_message(client, user_message: str, image_data: str = None) -> None:
     """Create a user message in the thread."""
+    content = []
+    
+    # Add text content
+    content.append({"type": "text", "text": user_message})
+    
+    # If image data is provided, store it in session state for tools to access
+    if image_data:
+        import streamlit as st
+        st.session_state.uploaded_image_data = image_data
+        content[0]["text"] += "\n\n[Image uploaded and available for analysis. You can use the smart_crop_image tool to analyze it with any aspect ratios you want.]"
+    
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
         role="user",
-        content=user_message,
+        content=content,
     )
 
 
@@ -75,6 +86,21 @@ def handle_tool_calls(client, run_status, run):
         # Use the tool registry to call the appropriate function
         if func_name in TOOL_REGISTRY:
             output = TOOL_REGISTRY[func_name](**arguments)
+            
+            # Special handling for crop_image tool
+            if func_name == "crop_image":
+                try:
+                    crop_result = json.loads(output)
+                    if "cropped_image_b64" in crop_result:
+                        # Store the cropped image in session state for display
+                        st.session_state.cropped_image_data = crop_result
+                        # Modify the output to be more user-friendly
+                        output = json.dumps({
+                            "success": True,
+                            "message": f"Image cropped successfully to {crop_result['cropped_size']['width']}x{crop_result['cropped_size']['height']} pixels"
+                        })
+                except:
+                    pass  # If parsing fails, use original output
         else:
             output = json.dumps({"error": f"Unknown function: {func_name}"})
         
@@ -125,7 +151,7 @@ def poll_run_completion(client, run, poll_interval_sec: float, max_wait_sec: int
         # Continue polling for other statuses
 
 
-def run_conversation(user_message: str, poll_interval_sec: float = None, max_wait_sec: int = None) -> str:
+def run_conversation(user_message: str, image_data: str = None, poll_interval_sec: float = None, max_wait_sec: int = None) -> str:
     """Run a conversation with the assistant and return the response."""
     # Use config defaults if not provided
     if poll_interval_sec is None:
@@ -141,7 +167,7 @@ def run_conversation(user_message: str, poll_interval_sec: float = None, max_wai
         return error
 
     # Create user message and start run
-    create_user_message(client, user_message)
+    create_user_message(client, user_message, image_data)
     run = start_assistant_run(client)
 
     # Poll for completion and return result
