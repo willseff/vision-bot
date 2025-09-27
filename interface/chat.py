@@ -11,19 +11,75 @@ def render_chat_interface():
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []  # list of dicts: {"role": "user"|"assistant", "content": str}
-
-    # Render chat history
+    
+    # Initialize upload key for file uploader
+    if "upload_key" not in st.session_state:
+        st.session_state.upload_key = 0
+    
+    # Render chat history FIRST
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
+            
+            # For user messages with images, display the image
+            if msg["role"] == "user" and "image_data" in msg:
+                try:
+                    image_bytes = base64.b64decode(msg["image_data"])
+                    st.image(image_bytes, caption="Uploaded image", width=300)
+                except:
+                    pass
+            
+            # For assistant messages with cropped images, display the cropped image
+            if msg["role"] == "assistant" and "cropped_image_data" in msg:
+                crop_data = msg["cropped_image_data"]
+                st.image(f"data:image/jpeg;base64,{crop_data['cropped_image_b64']}", 
+                       caption=f"Cropped image ({crop_data['cropped_size']['width']}x{crop_data['cropped_size']['height']})",
+                       width=300)
+                st.success("✅ Image cropped successfully!")
 
-    # Image upload
-    uploaded_file = st.file_uploader("Upload an image (optional)", type=["jpg", "jpeg", "png", "bmp", "gif"])
+    # Check if we're currently processing a message (show spinner below messages, above input)
+    if "processing" in st.session_state and st.session_state.processing:
+        # Show spinner below chat history but above input controls
+        with st.spinner("Thinking..."):
+            # Get the message data from session state
+            message_content = st.session_state.pending_message
+            image_data = st.session_state.get("pending_image_data")
+            
+            # Call the assistant and add response to history
+            response = run_conversation(message_content, image_data=image_data)
+            
+            # Add assistant message to history (include cropped image data if present)
+            assistant_message = {"role": "assistant", "content": response["content"]}
+            if "cropped_image_data" in response:
+                assistant_message["cropped_image_data"] = response["cropped_image_data"]
+            st.session_state.messages.append(assistant_message)
+            
+            # Clear processing state
+            del st.session_state.processing
+            del st.session_state.pending_message
+            if "pending_image_data" in st.session_state:
+                del st.session_state.pending_image_data
+            
+            # Rerun to update the display
+            st.rerun()
     
-    # Chat input
-    prompt = st.chat_input("Ask about the weather or upload an image for analysis")
+    # Create input controls at the BOTTOM (only when not processing)
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        # Chat input
+        prompt = st.chat_input("Ask about the weather or upload an image for analysis")
+    
+    with col2:
+        # Image upload (in a column next to chat input)
+        # Use a unique key to reset after each upload
+        upload_key = st.session_state.get("upload_key", 0)
+        uploaded_file = st.file_uploader("Upload image", type=["jpg", "jpeg", "png", "bmp", "gif"], 
+                                       label_visibility="collapsed", key=f"uploader_{upload_key}")
+    
+    # Process input AFTER rendering everything else
     if prompt:
-        # Prepare message content
+        # Prepare message content (keep user's original message clean)
         message_content = prompt
         
         # Handle uploaded image
@@ -32,34 +88,23 @@ def render_chat_interface():
             # Read and encode image
             image_bytes = uploaded_file.read()
             image_data = base64.b64encode(image_bytes).decode('utf-8')
-            message_content += f"\n\n[Image uploaded: {uploaded_file.name}] Please analyze this image and provide smart cropping suggestions."
+            # Increment upload key to reset the uploader for next message
+            st.session_state.upload_key = upload_key + 1
         
-        # Add user message to UI/history
-        st.session_state.messages.append({"role": "user", "content": message_content})
-        with st.chat_message("user"):
-            st.write(message_content)
-            if uploaded_file is not None:
-                st.image(uploaded_file, caption=uploaded_file.name, width=300)
-
-        # Call the assistant
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                reply = run_conversation(message_content, image_data=image_data)
-            
-            # Display the assistant's text response
-            st.write(reply)
-            
-            # Check if there's a cropped image to display
-            if "cropped_image_data" in st.session_state:
-                crop_data = st.session_state.cropped_image_data
-                st.image(f"data:image/jpeg;base64,{crop_data['cropped_image_b64']}", 
-                       caption=f"Cropped image ({crop_data['cropped_size']['width']}x{crop_data['cropped_size']['height']})",
-                       width=300)
-                st.success("✅ Image cropped successfully!")
-                # Clear the cropped image data after displaying
-                del st.session_state.cropped_image_data
-                
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        # Store message data in session state for processing
+        st.session_state.pending_message = message_content
+        if image_data:
+            st.session_state.pending_image_data = image_data
+        
+        # Add user message to history immediately
+        message_data = {"role": "user", "content": message_content}
+        if image_data:
+            message_data["image_data"] = image_data
+        st.session_state.messages.append(message_data)
+        
+        # Set processing flag and rerun to show spinner
+        st.session_state.processing = True
+        st.rerun()
 
 def render_sidebar():
     """Render the sidebar with setup information."""

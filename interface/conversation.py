@@ -30,9 +30,8 @@ def create_user_message(client, user_message: str, image_data: str = None) -> No
     
     # If image data is provided, store it in session state for tools to access
     if image_data:
-        import streamlit as st
         st.session_state.uploaded_image_data = image_data
-        content[0]["text"] += "\n\n[Image uploaded and available for analysis. You can use the smart_crop_image tool to analyze it with any aspect ratios you want.]"
+        # Don't append technical instructions - assistant's system prompt handles this automatically
     
     client.beta.threads.messages.create(
         thread_id=st.session_state.thread_id,
@@ -151,8 +150,12 @@ def poll_run_completion(client, run, poll_interval_sec: float, max_wait_sec: int
         # Continue polling for other statuses
 
 
-def run_conversation(user_message: str, image_data: str = None, poll_interval_sec: float = None, max_wait_sec: int = None) -> str:
-    """Run a conversation with the assistant and return the response."""
+def run_conversation(user_message: str, image_data: str = None, poll_interval_sec: float = None, max_wait_sec: int = None) -> dict:
+    """Run a conversation with the assistant and return the response.
+    
+    Returns:
+        dict with "content" key and optionally "cropped_image_data" key
+    """
     # Use config defaults if not provided
     if poll_interval_sec is None:
         poll_interval_sec = Config.POLL_INTERVAL_SEC
@@ -164,11 +167,19 @@ def run_conversation(user_message: str, image_data: str = None, poll_interval_se
     # Validate assistant setup
     error = validate_assistant_setup()
     if error:
-        return error
+        return {"content": error}
 
     # Create user message and start run
     create_user_message(client, user_message, image_data)
     run = start_assistant_run(client)
 
     # Poll for completion and return result
-    return poll_run_completion(client, run, poll_interval_sec, max_wait_sec)
+    content = poll_run_completion(client, run, poll_interval_sec, max_wait_sec)
+    
+    # Check if there's cropped image data from the tool calls
+    result = {"content": content}
+    if "cropped_image_data" in st.session_state:
+        result["cropped_image_data"] = st.session_state.cropped_image_data
+        del st.session_state.cropped_image_data  # Clean up
+    
+    return result
