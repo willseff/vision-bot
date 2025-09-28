@@ -208,3 +208,6 @@ __marimo__/
 
 # ignore any files iwth ending .env
 *.env
+
+# ignore ds store
+.DS_Store
