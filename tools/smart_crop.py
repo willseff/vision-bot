@@ -1,9 +1,11 @@
 import os
 import base64
 import json
+import asyncio
 from io import BytesIO
 from PIL import Image
 from azure.ai.vision.imageanalysis import ImageAnalysisClient
+from azure.ai.vision.imageanalysis.aio import ImageAnalysisClient as AsyncImageAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.vision.imageanalysis.models import VisualFeatures
 
@@ -19,9 +21,15 @@ client = ImageAnalysisClient(
     credential=AzureKeyCredential(key)
 )
 
+async_client = AsyncImageAnalysisClient(
+    endpoint=endpoint,
+    credential=AzureKeyCredential(key)
+)
+
 def smart_crop_image(aspect_ratios: list[float] = None) -> str:
     """
     Analyze the uploaded image and return smart crop suggestions.
+    Uses async Azure client for better concurrency handling.
     
     Args:
         aspect_ratios: List of aspect ratios for smart cropping (default: [0.9, 1.33])
@@ -29,54 +37,61 @@ def smart_crop_image(aspect_ratios: list[float] = None) -> str:
     Returns:
         JSON string containing smart crop results and metadata
     """
-    import streamlit as st
+    async def _smart_crop_async():
+        import streamlit as st
+        
+        # Get image data from session state
+        image_data_b64 = getattr(st.session_state, 'uploaded_image_data', None)
+        if not image_data_b64:
+            return json.dumps({"error": "No image data available. Please upload an image first."})
+        
+        if aspect_ratios is None:
+            aspect_ratios_local = [0.9, 1.33]
+        else:
+            aspect_ratios_local = aspect_ratios
+        
+        # Decode base64 string to bytes
+        try:
+            image_bytes = base64.b64decode(image_data_b64)
+        except Exception as e:
+            return json.dumps({"error": f"Failed to decode base64 image data: {str(e)}"})
+        
+        visual_features = [VisualFeatures.SMART_CROPS]
+        
+        try:
+            # Use async method for better concurrency
+            result = await async_client.analyze(
+                image_data=image_bytes,
+                visual_features=visual_features,
+                smart_crops_aspect_ratios=aspect_ratios_local,
+                gender_neutral_caption=True,
+                language="en"
+            )
+        except Exception as e:
+            return json.dumps({"error": f"Failed to analyze image: {str(e)}"})
+        
+        smart_crops = []
+        if result.smart_crops is not None:
+            for smart_crop in result.smart_crops.list:
+                smart_crops.append({
+                    "aspect_ratio": smart_crop.aspect_ratio,
+                    "bounding_box": {
+                        "x": smart_crop.bounding_box["x"],
+                        "y": smart_crop.bounding_box["y"],
+                        "w": smart_crop.bounding_box["w"],
+                        "h": smart_crop.bounding_box["h"]
+                    }
+                })
+        
+        return json.dumps({
+            "smart_crops": smart_crops,
+            "image_height": result.metadata.height,
+            "image_width": result.metadata.width,
+            "model_version": result.model_version
+        })
     
-    # Get image data from session state
-    image_data_b64 = getattr(st.session_state, 'uploaded_image_data', None)
-    if not image_data_b64:
-        return json.dumps({"error": "No image data available. Please upload an image first."})
-    
-    if aspect_ratios is None:
-        aspect_ratios = [0.9, 1.33]
-    
-    # Decode base64 string to bytes
-    try:
-        image_bytes = base64.b64decode(image_data_b64)
-    except Exception as e:
-        return json.dumps({"error": f"Failed to decode base64 image data: {str(e)}"})
-    
-    visual_features = [VisualFeatures.SMART_CROPS]
-    
-    try:
-        result = client.analyze(
-            image_data=image_bytes,
-            visual_features=visual_features,
-            smart_crops_aspect_ratios=aspect_ratios,
-            gender_neutral_caption=True,
-            language="en"
-        )
-    except Exception as e:
-        return json.dumps({"error": f"Failed to analyze image: {str(e)}"})
-    
-    smart_crops = []
-    if result.smart_crops is not None:
-        for smart_crop in result.smart_crops.list:
-            smart_crops.append({
-                "aspect_ratio": smart_crop.aspect_ratio,
-                "bounding_box": {
-                    "x": smart_crop.bounding_box["x"],
-                    "y": smart_crop.bounding_box["y"],
-                    "w": smart_crop.bounding_box["w"],
-                    "h": smart_crop.bounding_box["h"]
-                }
-            })
-    
-    return json.dumps({
-        "smart_crops": smart_crops,
-        "image_height": result.metadata.height,
-        "image_width": result.metadata.width,
-        "model_version": result.model_version
-    })
+    # Run the async function and return result
+    return asyncio.run(_smart_crop_async())
 
 
 def crop_image(x: int, y: int, width: int, height: int) -> str:
