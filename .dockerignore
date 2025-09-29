@@ -22,5 +22,4 @@ coverage.xml
 .hypothesis
 .DS_Store
 azureopenai.env
-test_images/
 test.ipynb
