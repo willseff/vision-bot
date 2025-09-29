@@ -35,7 +35,7 @@ def render_chat_interface():
                 st.image(f"data:image/jpeg;base64,{crop_data['cropped_image_b64']}", 
                        caption=f"Cropped image ({crop_data['cropped_size']['width']}x{crop_data['cropped_size']['height']})",
                        width=300)
-                st.success("✅ Image cropped successfully!")
+                st.success("Image cropped successfully!")
             
             # For assistant messages with upscaled images, display the upscaled image
             if msg["role"] == "assistant" and "upscaled_image_data" in msg:
@@ -47,7 +47,7 @@ def render_chat_interface():
                 st.image(f"data:image/png;base64,{upscale_data['upscaled_image_b64']}", 
                        caption=f"Upscaled {scale}x ({width}x{height}) - Enhanced with OpenCV EDSR",
                        width=400)  # Larger display for upscaled images
-                st.success(f"✅ Image upscaled {scale}x successfully using OpenCV EDSR model!")
+                st.success(f"Image upscaled {scale}x successfully using OpenCV EDSR model!")
 
     # Check if we're currently processing a message (show spinner below messages, above input)
     if "processing" in st.session_state and st.session_state.processing:
