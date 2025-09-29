@@ -15,9 +15,9 @@ def validate_assistant_setup() -> str | None:
     """
     ensure_assistant_and_thread()
     if "assistant_error" in st.session_state:
-        return f"❌ Assistant setup failed: {st.session_state.assistant_error}"
+        return f"Assistant setup failed: {st.session_state.assistant_error}"
     if "assistant_id" not in st.session_state or "thread_id" not in st.session_state:
-        return "❌ Assistant not ready. Check your Azure keys and deployment name."
+        return "Assistant not ready. Check your Azure keys and deployment name."
     return None
 
 
@@ -61,10 +61,10 @@ def extract_assistant_response(client) -> str:
     if last_response:
         try:
             content = last_response.content[0].text.value
-            return content if content.strip() else "✅ Task completed successfully."
+            return content if content.strip() else "Task completed successfully."
         except Exception:
-            return "⚠️ Response received but could not extract text content."
-    return "⚠️ No response received from assistant."
+            return "Response received but could not extract text content."
+    return "No response received from assistant."
 
 
 def handle_tool_calls(client, run_status, run):
@@ -147,7 +147,7 @@ def poll_run_completion(client, run, poll_interval_sec: float, max_wait_sec: int
 
     while True:
         if time.time() - start > max_wait_sec:
-            return "⚠️ Timed out waiting for the assistant. Please try again."
+            return "Timed out waiting for the assistant. Please try again."
 
         time.sleep(poll_interval_sec)
         run_status = client.beta.threads.runs.retrieve(
@@ -164,7 +164,7 @@ def poll_run_completion(client, run, poll_interval_sec: float, max_wait_sec: int
 
         elif status in {"failed", "cancelled", "expired"}:
             err = getattr(run_status, "last_error", None)
-            return f"❌ Run {status}. {err if err else ''}"
+            return f"Run {status}. {err if err else ''}"
 
         # Continue polling for other statuses
 
