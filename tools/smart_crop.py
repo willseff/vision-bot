@@ -9,12 +9,10 @@ from azure.ai.vision.imageanalysis.aio import ImageAnalysisClient as AsyncImageA
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.vision.imageanalysis.models import VisualFeatures
 
-from dotenv import load_dotenv
+from config.settings import Config
 
-load_dotenv("azureopenai.env")
-
-endpoint = os.getenv("VISION_STUDIO_ENDPOINT")
-key = os.getenv("VISION_STUDIO_KEY")
+endpoint = Config.VISION_STUDIO_ENDPOINT
+key = Config.VISION_STUDIO_KEY
 
 client = ImageAnalysisClient(
     endpoint=endpoint,
