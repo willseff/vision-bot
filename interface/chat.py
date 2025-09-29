@@ -127,7 +127,7 @@ def render_sidebar():
         st.markdown("""
         **1. Install deps**
         ```bash
-        pip install streamlit python-dotenv "openai>=1.40" requests azure-ai-vision azure-core
+        pip install streamlit "openai>=1.40" requests azure-ai-vision azure-core
         ```
         **2. Run locally**
         ```bash
@@ -139,7 +139,7 @@ def render_sidebar():
         - Upload images for smart cropping analysis and actual cropping
         
         **Troubleshooting**
-        - Ensure `azureopenai.env` contains valid Azure OpenAI and Vision API keys.
+        - Ensure the following environment variables are set: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `VISION_STUDIO_ENDPOINT`, `VISION_STUDIO_KEY`, and `OPENWEATHERMAP_API_KEY`.
         - Replace `model` with your **Azure deployment name** (e.g., `gpt-4o-mini`).
         - If the page is blank, check your terminal for errors and try: `streamlit run app.py --server.runOnSave=false`.
         - The assistant and thread are created lazily on first message, so the page should render even if keys are missing.

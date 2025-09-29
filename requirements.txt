@@ -1,0 +1,7 @@
+streamlit
+azure-ai-vision-imageanalysis
+azure-core
+openai
+pillow
+requests
+aiohttp

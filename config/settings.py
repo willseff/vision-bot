@@ -1,7 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv("azureopenai.env")
 
 class Config:
     """Configuration for the vision bot"""
@@ -11,6 +8,10 @@ class Config:
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
     AZURE_OPENAI_API_VERSION = "2024-05-01-preview"
     AZURE_OPENAI_MODEL = 'gpt-4.1-mini'
+
+    # Azure Vision Studio settings
+    VISION_STUDIO_ENDPOINT = os.getenv("VISION_STUDIO_ENDPOINT")
+    VISION_STUDIO_KEY = os.getenv("VISION_STUDIO_KEY")
 
     # Weather API Settings
     OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
@@ -28,4 +29,4 @@ class Config:
 
     # conversation settings
     POLL_INTERVAL_SEC = 1.5
-    MAX_WAIT_SEC = 90
+    MAX_WAIT_SEC = 120
