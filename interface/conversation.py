@@ -100,6 +100,25 @@ def handle_tool_calls(client, run_status, run):
                         })
                 except:
                     pass  # If parsing fails, use original output
+            
+            # Special handling for upscale_image tool
+            if func_name == "upscale_image":
+                try:
+                    upscale_result = json.loads(output)
+                    if "upscaled_image_b64" in upscale_result:
+                        # Store the upscaled image in session state for display
+                        st.session_state.upscaled_image_data = upscale_result
+                        # Modify the output to be more user-friendly
+                        scale = upscale_result.get('scale_factor', 'unknown')
+                        new_size = upscale_result.get('upscaled_size', {})
+                        width = new_size.get('width', 'unknown')
+                        height = new_size.get('height', 'unknown')
+                        output = json.dumps({
+                            "success": True,
+                            "message": f"Image upscaled {scale}x successfully to {width}x{height} pixels using OpenCV EDSR model"
+                        })
+                except:
+                    pass  # If parsing fails, use original output
         else:
             output = json.dumps({"error": f"Unknown function: {func_name}"})
         
@@ -154,7 +173,7 @@ def run_conversation(user_message: str, image_data: str = None, poll_interval_se
     """Run a conversation with the assistant and return the response.
     
     Returns:
-        dict with "content" key and optionally "cropped_image_data" key
+        dict with "content" key and optionally "cropped_image_data" or "upscaled_image_data" keys
     """
     # Use config defaults if not provided
     if poll_interval_sec is None:
@@ -176,10 +195,14 @@ def run_conversation(user_message: str, image_data: str = None, poll_interval_se
     # Poll for completion and return result
     content = poll_run_completion(client, run, poll_interval_sec, max_wait_sec)
     
-    # Check if there's cropped image data from the tool calls
+    # Check if there's cropped or upscaled image data from the tool calls
     result = {"content": content}
     if "cropped_image_data" in st.session_state:
         result["cropped_image_data"] = st.session_state.cropped_image_data
         del st.session_state.cropped_image_data  # Clean up
+    
+    if "upscaled_image_data" in st.session_state:
+        result["upscaled_image_data"] = st.session_state.upscaled_image_data
+        del st.session_state.upscaled_image_data  # Clean up
     
     return result

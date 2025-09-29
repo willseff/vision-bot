@@ -1,5 +1,6 @@
 from tools.get_weather import get_weather
 from tools.smart_crop import smart_crop_image, crop_image
+from tools.upscale import upscale_image
 
 # Define the tool schema for the Assistant API
 WEATHER_TOOL_SCHEMA = {
@@ -64,11 +65,36 @@ CROP_IMAGE_TOOL_SCHEMA = {
     },
 }
 
+UPSCALE_IMAGE_TOOL_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "upscale_image",
+        "description": (
+            "Upscale the uploaded image using OpenCV EDSR model deployed on Azure Container Apps. "
+            "This function enhances image resolution using deep learning super-resolution."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scale": {
+                    "type": "integer", 
+                    "description": "Upscaling factor (2, 3, or 4). Default is 2.",
+                    "enum": [2, 3, 4]
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+
+
 # Registry of all available tools
 TOOL_REGISTRY = {
     "get_weather": get_weather,
     "smart_crop_image": smart_crop_image,
     "crop_image": crop_image,
+    "upscale_image": upscale_image,
 }
 
 # List of all tool schemas
@@ -76,4 +102,5 @@ TOOLS_LIST = [
     WEATHER_TOOL_SCHEMA,
     SMART_CROP_TOOL_SCHEMA,
     CROP_IMAGE_TOOL_SCHEMA,
+    UPSCALE_IMAGE_TOOL_SCHEMA,
 ]

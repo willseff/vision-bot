@@ -36,6 +36,18 @@ def render_chat_interface():
                        caption=f"Cropped image ({crop_data['cropped_size']['width']}x{crop_data['cropped_size']['height']})",
                        width=300)
                 st.success("✅ Image cropped successfully!")
+            
+            # For assistant messages with upscaled images, display the upscaled image
+            if msg["role"] == "assistant" and "upscaled_image_data" in msg:
+                upscale_data = msg["upscaled_image_data"]
+                scale = upscale_data.get('scale_factor', 'unknown')
+                new_size = upscale_data.get('upscaled_size', {})
+                width = new_size.get('width', 'unknown')
+                height = new_size.get('height', 'unknown')
+                st.image(f"data:image/png;base64,{upscale_data['upscaled_image_b64']}", 
+                       caption=f"Upscaled {scale}x ({width}x{height}) - Enhanced with OpenCV EDSR",
+                       width=400)  # Larger display for upscaled images
+                st.success(f"✅ Image upscaled {scale}x successfully using OpenCV EDSR model!")
 
     # Check if we're currently processing a message (show spinner below messages, above input)
     if "processing" in st.session_state and st.session_state.processing:
@@ -48,10 +60,12 @@ def render_chat_interface():
             # Call the assistant and add response to history
             response = run_conversation(message_content, image_data=image_data)
             
-            # Add assistant message to history (include cropped image data if present)
+            # Add assistant message to history (include image data if present)
             assistant_message = {"role": "assistant", "content": response["content"]}
             if "cropped_image_data" in response:
                 assistant_message["cropped_image_data"] = response["cropped_image_data"]
+            if "upscaled_image_data" in response:
+                assistant_message["upscaled_image_data"] = response["upscaled_image_data"]
             st.session_state.messages.append(assistant_message)
             
             # Clear processing state
